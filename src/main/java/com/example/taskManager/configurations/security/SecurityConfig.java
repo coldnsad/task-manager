@@ -2,6 +2,7 @@ package com.example.taskManager.configurations.security;
 
 import com.example.taskManager.jwt.JwtTokenAuthFilter;
 import com.example.taskManager.services.CustomUserDetailsService;
+import lombok.SneakyThrows;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,7 +31,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @SneakyThrows
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         http
                 .csrf(AbstractHttpConfigurer::disable)  // Отключить CSRF (для REST API не нужно)
                 .authorizeHttpRequests(auth -> auth //authorizeHttpRequests задаёт правила доступа
@@ -45,8 +47,8 @@ public class SecurityConfig {
                         .requestMatchers("/task-api/tasks/**").hasAnyRole("USER", "ADMIN") // USER или ADMIN
                         .anyRequest().authenticated()
                 )
-                //.httpBasic(withDefaults())  // Базовая авторизация
-                //.formLogin(withDefaults())  // Стандартная форма авторизации
+                //.httpBasic(withDefaults())  // Базовая аутентификация
+                //.formLogin(withDefaults())  // Стандартная форма аутентификации
                 .addFilterBefore(jwtTokenAuthFilter, UsernamePasswordAuthenticationFilter.class) // JWT-авторизация
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

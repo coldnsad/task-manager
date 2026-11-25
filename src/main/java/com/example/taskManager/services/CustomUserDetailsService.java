@@ -1,6 +1,5 @@
 package com.example.taskManager.services;
 
-import com.example.taskManager.models.User;
 import com.example.taskManager.repositories.UserRepository;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -19,14 +18,17 @@ public class CustomUserDetailsService implements UserDetailsService {
         this.userRepository = userRepository;
     }
 
-    public UserDetails loadUserByUsername(@NotBlank String username) throws UsernameNotFoundException {
-        User user = userRepository.findUserByName(username).orElseThrow(() -> new UsernameNotFoundException(username));
-        return org.springframework.security.core.userdetails.User
-                .withUsername(user.getName())
-                .password(user.getPassword())
-                .authorities(user.getRoles().stream()
-                        .map(role -> new SimpleGrantedAuthority(role.getName()))
-                        .collect(Collectors.toList()))
-                .build();
+    public UserDetails loadUserByUsername(@NotBlank String username) {
+        //User user = userRepository.findUserByName(username).orElseThrow(() -> new UsernameNotFoundException(username));
+        return userRepository.findUserByName(username)
+                .map(user ->
+                        org.springframework.security.core.userdetails.User
+                                .withUsername(user.getName())
+                                .password(user.getPassword())
+                                .authorities(user.getRoles().stream()
+                                        .map(role -> new SimpleGrantedAuthority(role.getName()))
+                                        .collect(Collectors.toList()))
+                                .build())
+                .orElseThrow(() -> new UsernameNotFoundException(username));
     }
 }

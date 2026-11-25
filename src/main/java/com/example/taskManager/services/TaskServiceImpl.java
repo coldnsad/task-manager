@@ -11,6 +11,7 @@ import com.example.taskManager.models.Task;
 import com.example.taskManager.repositories.TaskRepository;
 import com.example.taskManager.specification.TaskSpecification;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -21,18 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class TaskServiceImpl implements TaskService {
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
     private final CustomerProfileClient customerProfileClient;
-
-    public TaskServiceImpl(TaskRepository taskRepository,
-                           TaskMapper taskMapper,
-                           CustomerProfileClient customerProfileClient) {
-        this.taskRepository = taskRepository;
-        this.taskMapper = taskMapper;
-        this.customerProfileClient = customerProfileClient;
-    }
 
     //@Transactional используется для безопасного выполнения операции изменения данных(атомарность)
     //В случае ошибки - бд вернется в состояние до
@@ -71,14 +65,13 @@ public class TaskServiceImpl implements TaskService {
         List<TaskDTO> taskDTOList = pagedTask.getContent().stream()
                 .map(taskMapper::taskToTaskDTO)
                 .toList();
-        TaskFilteredDTO taskFilteredDTO = new TaskFilteredDTO(
+        return new TaskFilteredDTO(
                 taskDTOList,
                 pagedTask.getNumber(),
                 pagedTask.getNumberOfElements(),
                 pagedTask.getTotalPages(),
                 pagedTask.getTotalElements()
         );
-        return taskFilteredDTO;
     }
 
     @Transactional
