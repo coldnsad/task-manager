@@ -1,0 +1,98 @@
+package com.example.taskmanager.services;
+
+import com.example.taskmanager.dto.CustomerDTO;
+import com.example.taskmanager.dto.ListTaskFilterDTO;
+import com.example.taskmanager.dto.TaskDTO;
+import com.example.taskmanager.dto.TaskFilteredDTO;
+import com.example.taskmanager.exceptions.TaskNotFoundException;
+import com.example.taskmanager.feign.CustomerProfileClient;
+import com.example.taskmanager.mappers.TaskMapper;
+import com.example.taskmanager.models.Task;
+import com.example.taskmanager.repositories.TaskRepository;
+import com.example.taskmanager.specification.TaskSpecification;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class TaskServiceImpl implements TaskService {
+    private final TaskRepository taskRepository;
+    private final TaskMapper taskMapper;
+    private final CustomerProfileClient customerProfileClient;
+
+    //@Transactional используется для безопасного выполнения операции изменения данных(атомарность)
+    //В случае ошибки - бд вернется в состояние до
+    @Transactional
+    public TaskDTO createTask(TaskDTO taskDTO) {
+        Task task = taskMapper.taskDTOToTask(taskDTO);
+        Task savedTask = taskRepository.save(task);
+        TaskDTO savedTaskDTO = taskMapper.taskToTaskDTO(savedTask);
+        savedTaskDTO.setId(savedTask.getId());
+        return savedTaskDTO;
+    }
+
+    public TaskDTO getTaskById(Long id) {
+        TaskDTO taskDTO;
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFoundException(id));
+        if (task.getCustomerId() != null) {
+            ResponseEntity<CustomerDTO> response = customerProfileClient.getCustomerById(task.getCustomerId());
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                CustomerDTO customerDTO = response.getBody();
+                taskDTO = taskMapper.toDTOWithCustomer(task, customerDTO);
+            } else {
+                taskDTO = taskMapper.taskToTaskDTO(task);
+            }
+        } else {
+            taskDTO = taskMapper.taskToTaskDTO(task);
+        }
+        taskDTO.setId(task.getId());
+        return taskDTO;
+    }
+
+    @Override
+    public TaskFilteredDTO getAllTasks(ListTaskFilterDTO filters, Pageable pageable) {
+        Specification<Task> taskSpecification = TaskSpecification.build(filters);
+        Page<Task> pagedTask = taskRepository.findAll(taskSpecification, pageable);
+        List<TaskDTO> taskDTOList = pagedTask.getContent().stream()
+                .map(taskMapper::taskToTaskDTO)
+                .toList();
+        return new TaskFilteredDTO(
+                taskDTOList,
+                pagedTask.getNumber(),
+                pagedTask.getNumberOfElements(),
+                pagedTask.getTotalPages(),
+                pagedTask.getTotalElements()
+        );
+    }
+
+    @Transactional
+    public TaskDTO updateTask(Long id, TaskDTO updatedTask) {
+        Task existingTask = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFoundException(id));
+        existingTask.setTitle(updatedTask.getTitle());
+        existingTask.setDescription(updatedTask.getDescription());
+        existingTask.setCompleted(updatedTask.getCompleted());
+        Task savedTask = taskRepository.save(existingTask);
+        return taskMapper.taskToTaskDTO(savedTask);
+    }
+
+    @Transactional
+    public void deleteTaskById(Long id) {
+        Task taskForDelete = taskMapper.taskDTOToTask(getTaskById(id));
+        taskRepository.delete(taskForDelete);
+    }
+
+    //Вызов метода происходит после полной инициализации бина
+    @PostConstruct
+    public void init() {
+    }
+}

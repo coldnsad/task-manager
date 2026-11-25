@@ -1,0 +1,34 @@
+package com.example.taskmanager.services;
+
+import com.example.taskmanager.repositories.UserRepository;
+import jakarta.validation.constraints.NotBlank;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+import java.util.stream.Collectors;
+
+@Service
+public class CustomUserDetailsService implements UserDetailsService {
+    private final UserRepository userRepository;
+
+    public CustomUserDetailsService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    public UserDetails loadUserByUsername(@NotBlank String username) {
+        //User user = userRepository.findUserByName(username).orElseThrow(() -> new UsernameNotFoundException(username));
+        return userRepository.findUserByName(username)
+                .map(user ->
+                        org.springframework.security.core.userdetails.User
+                                .withUsername(user.getName())
+                                .password(user.getPassword())
+                                .authorities(user.getRoles().stream()
+                                        .map(role -> new SimpleGrantedAuthority(role.getName()))
+                                        .collect(Collectors.toList()))
+                                .build())
+                .orElseThrow(() -> new UsernameNotFoundException(username));
+    }
+}
