@@ -10,7 +10,7 @@
     </parent>
     <artifactId>task-manager-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>task-manager</name>
+    <name>task-manager-service</name>
     <description>Demo project for Spring Boot</description>
     <url/>
     <licenses>
